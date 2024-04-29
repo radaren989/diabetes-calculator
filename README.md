@@ -9,5 +9,8 @@ run these commands:
   pip install -r imports.txt
 
 run go: go run .
+
 run ruby: ruby main.rb
+
 run rust: cargo run or rustc src/main.rs %% ./main
+
