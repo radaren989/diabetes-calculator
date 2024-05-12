@@ -88,7 +88,7 @@ class GUI(QWidget):
         standard = []
         for i in range(8):
             min, max = self.min_and_max[self.headers[i]]
-            standard.append(values[i] / (max - min))
+            standard.append((values[i] - min) / (max - min))
         
         return standard
 
