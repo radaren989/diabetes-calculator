@@ -4,12 +4,13 @@ from PyQt5.QtWidgets import QLabel, QApplication, QWidget, QPushButton, QLineEdi
 from PyQt5.QtCore import Qt
 
 PATH = 'diabetes.csv'
+PROCESSED_PATH = 'processed_diabetes.csv'
 
 class GUI(QWidget):
     def __init__(self):
         super().__init__()
-        self.store_csv_in_buffer(PATH)
         self.get_min_and_max()
+        self.write_proccesed_csv()
         self.setGeometry(800, 600, 800, 600)
         self.setWindowTitle("Diabetes Calculator")
         self.initUI()
@@ -41,6 +42,17 @@ class GUI(QWidget):
             input_layout.addWidget(input_label, i, 0)
             input_layout.addWidget(input_field, i, 1)
 
+        self.PatientNumber_field = QLineEdit(self)
+        self.PatientNumber_label = QLabel(self)
+        
+        self.PatientNumber_label.setText("Patient Number")
+        self.PatientNumber_label.setStyleSheet("color: white; font-size: 14px;")
+        self.PatientNumber_field.setStyleSheet("background-color: white; color black;")
+        self.PatientNumber_field.setFixedHeight(40)
+
+        input_layout.addWidget(self.PatientNumber_label, 8,0)
+        input_layout.addWidget(self.PatientNumber_field, 8,1)
+
         main_layout.addLayout(input_layout)
         main_layout.addSpacerItem(QSpacerItem(20, 40, QSizePolicy.Minimum, QSizePolicy.Expanding))
 
@@ -67,10 +79,10 @@ class GUI(QWidget):
         self.calculate_distance()
         
         # calculate probability
-        probability = 0
-        for value in self.nearest_five:
-            probability += value[8]
-        probability *= 20
+        outcomes = 0
+        for value in self.nearest:
+            outcomes += int(value[8])
+        probability = (outcomes / self.patient_number) * 100
         
         self.result_label.setText(f"Diabetes with {probability}% probability")
         self.update_labels()
@@ -93,22 +105,56 @@ class GUI(QWidget):
                 QMessageBox.warning(self, "Error!", "Inputs Are Not In Supported Range!")
                 return False
         
+        try:
+            self.patient_number = int(self.PatientNumber_field.text())
+            if self.patient_number <= 0:
+                raise AttributeError
+        except ValueError:
+                QMessageBox.warning(self, "Error!", "Patient Number Must Be Numeric!")
+                return False
+        except AttributeError:
+                QMessageBox.warning(self, "Error!", "Inputs Are Not In Supported Range!")
+                return False
+
         return True
 
     
+    def write_proccesed_csv(self):
+        with open(PATH, 'r' ) as readFile:
+            reader = csv.reader(readFile)
+            with open(PROCESSED_PATH, 'w') as writeFile:
+                writer = csv.writer(writeFile)
+                writer.writerow(next(reader))
+            
+                for data in reader:
+                    float_data = [float(value) for value in data]
+                    processed = self.convert_to_standard(float_data)
+                    writer.writerow(processed)
+
     def calculate_distance(self):
-        self.nearest_five = []
+        self.nearest = []
         standard_input = self.convert_to_standard(self.input_numeric)
         
         distances = []
-        for i, value in enumerate(self.csv_buffer):
-            distances.append((i,sum((x - y) ** 2 for x, y in zip(standard_input, self.convert_to_standard(value))) ** 0.5))
+        with open(PROCESSED_PATH, 'r') as file:
+            reader = csv.reader(file)
+            next(reader)
+
+            for i, row in enumerate(reader):
+                distances.append((i,sum((x - y) ** 2 for x, y in zip(standard_input, self.convert_to_standard([float(value) for value in row ]))) ** 0.5))
         
         #distance has (index, value) pairs, lamda sort according to values
         distances = sorted(distances, key= lambda x:x[1])
-        closest_lists_indices = [index for index,_ in distances[:5]]
-        self.nearest_five = [self.csv_buffer[index] for index in closest_lists_indices]
+        closest_lists_indices = [index for index,_ in distances[:self.patient_number]]
+        print(closest_lists_indices)
+        with open(PATH, 'r') as file:
+            reader = csv.reader(file)
+            next(reader)
 
+            for i, row in enumerate(reader):
+                if i in closest_lists_indices:
+                    self.nearest.append(row)
+                    print(row)
 
     def convert_to_standard(self, values: list):
         standard = []
@@ -118,26 +164,31 @@ class GUI(QWidget):
         
         return standard
 
-    def store_csv_in_buffer(self, path: str):
-        self.csv_buffer = []
-        self.headers = []
+    #def store_csv_in_buffer(self, path: str):
+    #    self.csv_buffer = []
+    #    self.headers = []
 
-        with open(path, 'r') as file:
-            csv_reader = csv.reader(file)
-            self.headers = next(csv_reader)
+     #   with open(path, 'r') as file:
+     #       csv_reader = csv.reader(file)
+     #       self.headers = next(csv_reader)
 
-            for row in csv_reader:
-                self.csv_buffer.append([float(value) for value in row])
+      #      for row in csv_reader:
+      #          self.csv_buffer.append([float(value) for value in row])
         
     def get_min_and_max(self):
         self.min_and_max = {}
-        for header in self.headers:
-            self.min_and_max[header] = (float('inf'), float('-inf'))
         
-        for row in self.csv_buffer:
-            for i, value in enumerate(row):
-                current_min, current_max = self.min_and_max[self.headers[i]]
-                self.min_and_max[self.headers[i]] = (min(current_min, float(value)), max(current_max, float(value)))
+        with open(PATH, 'r') as file:
+            reader = csv.reader(file)
+            self.headers = next(reader)
+            
+            for header in self.headers:
+                self.min_and_max[header] = (float('inf'), float('-inf'))
+            
+            for row in reader:
+                for i, value in enumerate(row):
+                    current_min, current_max = self.min_and_max[self.headers[i]]
+                    self.min_and_max[self.headers[i]] = (min(current_min, float(value)), max(current_max, float(value)))
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
