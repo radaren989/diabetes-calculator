@@ -82,7 +82,8 @@ class GUI(QWidget):
         #distance has (index, value) pairs, lamda sort according to values
         distances = sorted(distances, key= lambda x:x[1])
         closest_lists_indices = [index for index,_ in distances[:5]]
-        self.nearest_five = [self.csv_buffer[index] for index, _ in closest_lists_indices]
+        print(closest_lists_indices)
+        self.nearest_five = [self.csv_buffer[index] for index in closest_lists_indices]
 
     def convert_to_standard(self, values:list):
         standard = []

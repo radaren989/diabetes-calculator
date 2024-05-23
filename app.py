@@ -128,33 +128,34 @@ class GUI(QWidget):
             
                 for data in reader:
                     float_data = [float(value) for value in data]
+                    float_data = float_data[:-1]
                     processed = self.convert_to_standard(float_data)
                     writer.writerow(processed)
 
     def calculate_distance(self):
         self.nearest = []
         standard_input = self.convert_to_standard(self.input_numeric)
-        
+
         distances = []
         with open(PROCESSED_PATH, 'r') as file:
             reader = csv.reader(file)
             next(reader)
-
             for i, row in enumerate(reader):
-                distances.append((i,sum((x - y) ** 2 for x, y in zip(standard_input, self.convert_to_standard([float(value) for value in row ]))) ** 0.5))
+                float_row = [float(val) for val in row]
+                distance = sum((x - y) ** 2 for x, y in zip(standard_input, float_row)) ** 0.5
+                distances.append((i,distance))
         
         #distance has (index, value) pairs, lamda sort according to values
         distances = sorted(distances, key= lambda x:x[1])
         closest_lists_indices = [index for index,_ in distances[:self.patient_number]]
-        print(closest_lists_indices)
         with open(PATH, 'r') as file:
             reader = csv.reader(file)
             next(reader)
-
             for i, row in enumerate(reader):
                 if i in closest_lists_indices:
                     self.nearest.append(row)
-                    print(row)
+        
+        print(self.nearest)
 
     def convert_to_standard(self, values: list):
         standard = []
